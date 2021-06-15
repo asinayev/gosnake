@@ -14,12 +14,19 @@ const (
     Inside
     Snake
     Food
+    Danger
 )
 
 type status struct {
   StatusName StatusType
   SnakeOrder int
   HasHazard  bool
+}
+
+type snakenav struct {
+  Head Coord
+  Dir  string
+  Size int
 }
 
 type BoardRep struct {
@@ -29,6 +36,7 @@ type BoardRep struct {
   Offset    int
   OpenSlots int
   MyLength  int32
+  Snakes    []snakenav
 }
 
 func GetDepth(slots int) int {
@@ -70,6 +78,7 @@ func CreateRepresentation(b Board, me Battlesnake) BoardRep {
     BoardRepresentation.Board[xy.X+Offset][xy.Y+Offset].StatusName=Food
   }
   for _, snake := range b.Snakes {
+    // BoardRepresentation.Snakes
     if ((snake.Length>=me.Length) && (snake.ID != me.ID)){
       dirmap := GetDirections()
       for _, directions := range dirmap {
