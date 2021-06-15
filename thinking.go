@@ -49,7 +49,9 @@ func SubtrCoord(xy1 Coord, xy2 Coord) Coord {
 }
 
 func GetDepth(slots int) int {
-  if (slots>85){
+  if (slots>105){
+    return 7
+  } else if (slots>90){
     return 8
   } else if (slots>60){
     return 9
