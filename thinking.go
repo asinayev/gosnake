@@ -14,13 +14,12 @@ const (
     Inside
     Snake
     Food
-    Danger
-    Hazard
 )
 
 type status struct {
   StatusName StatusType
   SnakeOrder int
+  HasHazard  bool
 }
 
 type BoardRep struct {
@@ -65,7 +64,7 @@ func CreateRepresentation(b Board, me Battlesnake) BoardRep {
     }
   }
   for _, xy := range b.Hazards {
-    BoardRepresentation.Board[xy.X+Offset][xy.Y+Offset].StatusName=Hazard
+    BoardRepresentation.Board[xy.X+Offset][xy.Y+Offset].HasHazard=true
   }
   for _, xy := range b.Food {
     BoardRepresentation.Board[xy.X+Offset][xy.Y+Offset].StatusName=Food
@@ -109,7 +108,7 @@ func DetermineValue(x int, y int, board BoardRep, i int) float64 {
     }
   } else if (status.StatusName==Food) {
     spotpoints+=30
-  } else if (status.StatusName==Hazard) {
+  } else if (status.HasHazard) {
     spotpoints-=20
   } else if (status.StatusName==Danger && i==0) {
     spotpoints=3
