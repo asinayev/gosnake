@@ -5,9 +5,6 @@ import (
   "math"
 )
 
-const MaxSize=21
-const Maxi=1000
-
 type StatusType int
 const (
     Outside StatusType = iota
@@ -31,13 +28,25 @@ type snakenav struct {
 }
 
 type BoardRep struct {
-  Board     [MaxSize][MaxSize]status
+  Board     [][]status
 	Height    int 
 	Width     int
   Offset    int
   OpenSlots int
   MyLength  int32
   Snakes    []snakenav
+}
+
+func MakeEmptyBoardRep(brd Board, offset int) BoardRep {
+	var BRep BoardRep
+	BRep.Board = make([][]status, brd.Width+offset*2)	
+	for i:=0;i<brd.Width+offset*2;i++ {
+	    BRep.Board[i] = make([]status, brd.Height+offset*2)
+	}
+  BRep.Offset=offset
+  BRep.Height=brd.Height
+  BRep.Width=brd.Width
+	return BRep
 }
 
 func AddCoord(xy1 Coord, xy2 Coord) Coord {
@@ -50,13 +59,15 @@ func SubtrCoord(xy1 Coord, xy2 Coord) Coord {
 
 func GetDepth(slots int) int {
   if (slots>105){
+    return 6
+  } else if (slots>100){
     return 7
-  } else if (slots>90){
+  } else if (slots>80){
     return 8
   } else if (slots>60){
-    return 9
-  } else {
     return 10
+  } else {
+    return 11
   }
 }
 
@@ -79,11 +90,8 @@ func GetValue(board BoardRep, xy Coord) status {
 }
 
 func CreateRepresentation(b Board, me Battlesnake) BoardRep {
-  var BRep BoardRep
-  Offset:=2
-  BRep.Offset=Offset
-  BRep.Height=b.Height
-  BRep.Width=b.Width
+  Offset:=1
+  BRep := MakeEmptyBoardRep(b, Offset)
   BRep.MyLength=me.Length
   for x := 0; x < b.Width; x++ {
     for y := 0; y < b.Height; y++ {
@@ -122,13 +130,20 @@ func CreateRepresentation(b Board, me Battlesnake) BoardRep {
 
 func DetermineValue(xy Coord, board BoardRep, i int) float64 {
   var status = GetValue(board, xy)
-  spotpoints := float64(50)
+  spotpoints := float64(100)
   if board.MyLength>9{
     spotpoints-= math.Abs(float64(xy.X-(board.Width /2)))/float64(board.Width ) *3 -
                 math.Abs(float64(xy.Y-(board.Height/2)))/float64(board.Height) *3
     if ((xy.X==0)||(xy.Y==0)||(board.Width-xy.X==1)||(board.Height-xy.Y==1)){
-      spotpoints = 35
+      spotpoints = 55
     }
+  }
+  contested := status.IsDanger && i==0
+  if (contested||status.LikelySnake) {
+    spotpoints-=30
+  } 
+  if (status.HasHazard) {
+    spotpoints-=20
   }
   if (status.StatusName==Snake) {
     if (i-status.SnakeOrder==-1){
@@ -139,15 +154,13 @@ func DetermineValue(xy Coord, board BoardRep, i int) float64 {
       spotpoints-=10
     }
   } else if (status.StatusName==Food) {
-    spotpoints+=30
+    if (contested){
+      spotpoints-=10
+    } else {
+      spotpoints+=30
+    }    
   } else if (status.StatusName==Outside) {
     spotpoints=0
-  }
-  if ((status.IsDanger && i==0)||(status.LikelySnake)) {
-    spotpoints=math.Max(spotpoints-50,3)
-  } 
-  if (status.HasHazard) {
-    spotpoints-=20
   }
   return spotpoints
 }
