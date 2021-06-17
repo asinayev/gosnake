@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
   "math"
+  "time"
 )
 
 type StatusType int
@@ -37,6 +38,17 @@ type BoardRep struct {
   Snakes    []snakenav
 }
 
+func copyBoard(arr BoardRep) BoardRep {
+  tmp := arr
+	tmp_slice := make([][]status, len(arr.Board))
+	for i:=0;i<len(arr.Board);i++ {
+	    tmp_slice[i] = make([]status, len(arr.Board[i]))
+      copy(tmp_slice[i], arr.Board[i])
+	}
+  tmp.Board=tmp_slice
+	return tmp
+}
+
 func MakeEmptyBoardRep(brd Board, offset int) BoardRep {
 	var BRep BoardRep
 	BRep.Board = make([][]status, brd.Width+offset*2)	
@@ -59,15 +71,15 @@ func SubtrCoord(xy1 Coord, xy2 Coord) Coord {
 
 func GetDepth(slots int) int {
   if (slots>105){
-    return 6
-  } else if (slots>100){
-    return 7
-  } else if (slots>80){
     return 8
+  } else if (slots>100){
+    return 8
+  } else if (slots>80){
+    return 9
   } else if (slots>60){
     return 10
   } else {
-    return 11
+    return 10
   }
 }
 
@@ -165,7 +177,7 @@ func DetermineValue(xy Coord, board BoardRep, i int) float64 {
   return spotpoints
 }
 
-func ScoreLocation(xy Coord, boardrep BoardRep, points float64, i int, MaxDepth int)(float64, int){
+func ScoreLocation(xy Coord, boardrep BoardRep, points float64, i int, MaxDepth int, t0 time.Time)(float64, int){
   headscore := DetermineValue(xy, boardrep, i) 
   if ((headscore>0.1)&&(i<MaxDepth)){
     points += (headscore * math.Exp(-0.25 * float64(i)) )
@@ -179,26 +191,32 @@ func ScoreLocation(xy Coord, boardrep BoardRep, points float64, i int, MaxDepth 
         boardrep.Snakes[snakei].Head=newhead
       }
     }
-    points, i, _, _ = MoveSnake(xy, boardrep, points, i, MaxDepth)
+    points, i, _, _ = MoveSnake(xy, boardrep, points, i, MaxDepth, t0)
     }
   return points, i
 }
 
-func MoveSnake(xy Coord, boardrep BoardRep, points float64, i int, MaxDepth int) (float64, int, string, map[string][]float32) {
+func MoveSnake(xy Coord, boardrep BoardRep, points float64, i int, MaxDepth int, t0 time.Time) (float64, int, string, map[string][]float32) {
   dirmap := GetDirections()
   scorelist := make(map[string][]float32)
   imax := i
   pointsmax := points
   bestdir := "down"
   for directions, name := range dirmap{
-    newloc := AddCoord(xy, directions)
-    points_new, i_new := ScoreLocation( newloc, boardrep, points, i, MaxDepth)
-    scorelist[name] = []float32{float32(points_new), float32(i_new)}
-    if (i_new>imax)||((i_new==imax)&&(points_new>pointsmax)){
-      imax = i_new
-      pointsmax = points_new
-      bestdir=name
-      }
+    if i==0 {
+      t0 = time.Now()
+    }
+    if (time.Since(t0)<time.Second/25 ){
+      newloc := AddCoord(xy, directions)
+      boardrepCopy := copyBoard(boardrep)
+      points_new, i_new := ScoreLocation( newloc, boardrepCopy, points, i, MaxDepth, t0)
+      scorelist[name] = []float32{float32(points_new), float32(i_new)}
+      if (i_new>imax)||((i_new==imax)&&(points_new>pointsmax)){
+        imax = i_new
+        pointsmax = points_new
+        bestdir=name
+        }
+    }
   }
   return pointsmax, imax, bestdir, scorelist
 }
@@ -208,8 +226,7 @@ func Decide(r GameRequest) string {
   representation := CreateRepresentation(r.Board, r.You)
   Depth := GetDepth(representation.OpenSlots)
   fmt.Printf("\n###################Depth: %s; Openslots: %s \n", Depth, representation.OpenSlots)
-  points, i, move, scorelist := MoveSnake(r.You.Head, representation, 0, 0, Depth)
-  
+  points, i, move, scorelist := MoveSnake(r.You.Head, representation, 0, 0, Depth, time.Now())
   fmt.Printf("Scorelist:\n %s \n", scorelist)
   fmt.Printf("Choosing '%s' with Score: %s and %s iterations\n", move, points, i)
   return move
