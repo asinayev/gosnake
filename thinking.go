@@ -6,6 +6,8 @@ import (
   "time"
 )
 
+const cutoff = time.Second/20
+
 type StatusType int
 const (
     Outside StatusType = iota
@@ -71,13 +73,13 @@ func SubtrCoord(xy1 Coord, xy2 Coord) Coord {
 
 func GetDepth(slots int) int {
   if (slots>105){
-    return 8
+    return 6
   } else if (slots>100){
-    return 8
+    return 7
   } else if (slots>80){
-    return 9
+    return 8
   } else if (slots>60){
-    return 10
+    return 9
   } else {
     return 10
   }
@@ -143,16 +145,16 @@ func CreateRepresentation(b Board, me Battlesnake) BoardRep {
 func DetermineValue(xy Coord, board BoardRep, i int) float64 {
   var status = GetValue(board, xy)
   spotpoints := float64(100)
+  spotpoints-= (math.Abs(float64(xy.X-(board.Width /2)))/float64(board.Width ) *3 +
+              math.Abs(float64(xy.Y-(board.Height/2)))/float64(board.Height) *3)
   if board.MyLength>9{
-    spotpoints-= math.Abs(float64(xy.X-(board.Width /2)))/float64(board.Width ) *3 -
-                math.Abs(float64(xy.Y-(board.Height/2)))/float64(board.Height) *3
     if ((xy.X==0)||(xy.Y==0)||(board.Width-xy.X==1)||(board.Height-xy.Y==1)){
-      spotpoints = 55
+      spotpoints = 75
     }
   }
   contested := status.IsDanger && i==0
   if (contested||status.LikelySnake) {
-    spotpoints-=30
+    spotpoints-=40
   } 
   if (status.HasHazard) {
     spotpoints-=20
@@ -206,7 +208,7 @@ func MoveSnake(xy Coord, boardrep BoardRep, points float64, i int, MaxDepth int,
     if i==0 {
       t0 = time.Now()
     }
-    if (time.Since(t0)<time.Second/25 ){
+    if (time.Since(t0)<cutoff ){
       newloc := AddCoord(xy, directions)
       boardrepCopy := copyBoard(boardrep)
       points_new, i_new := ScoreLocation( newloc, boardrepCopy, points, i, MaxDepth, t0)
