@@ -7,7 +7,7 @@ import (
 )
 
 const cutoff = time.Second/20
-const dangerweight float64 = 15
+const dangerweight float64 = 25
 
 type StatusType int
 const (
@@ -172,11 +172,11 @@ func CreateRepresentation(b Board, me Battlesnake) BoardRep {
 func DetermineValue(xy Coord, board BoardRep, i int) float64 {
   var status = GetValue(board, xy)
   spotpoints := float64(200)
+  spotpoints-= math.Abs(float64(xy.X-(board.Width /2)))/float64(board.Width ) *6 
+  spotpoints-=math.Abs(float64(xy.Y-(board.Height/2)))/float64(board.Height) *6
   if board.MyLength>9{
-    spotpoints-= math.Abs(float64(xy.X-(board.Width /2)))/float64(board.Width ) *3 -
-                math.Abs(float64(xy.Y-(board.Height/2)))/float64(board.Height) *3
     if ((xy.X==0)||(xy.Y==0)||(board.Width-xy.X==1)||(board.Height-xy.Y==1)){
-      spotpoints = 175
+      spotpoints = 150
     }
   }
   contested := (status.DangerLvl>(dangerweight-.5)) && i==0
@@ -259,9 +259,9 @@ func Decide(r GameRequest) string {
   Depth := GetDepth(representation.OpenSlots)
   fmt.Printf("Setup time: %s \n", time.Since(t0))
   fmt.Printf("Depth: %s; Openslots: %s \n", Depth, representation.OpenSlots)
-  for rowi, row := range representation.Board{
-    fmt.Printf("\n Row number: %s\n %s \n", rowi, row)
-  }
+  // for rowi, row := range representation.Board{
+  //   fmt.Printf("\n Row number: %s\n %s \n", rowi, row)
+  // }
   points, i, move, scorelist := MoveSnake(r.You.Head, representation, 0, 0, Depth, time.Now())
   fmt.Printf("Scorelist:\n %s \n", scorelist)
   fmt.Printf("Choosing '%s' with Score: %s and %s iterations\n", move, points, i)
