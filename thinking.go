@@ -7,6 +7,7 @@ import (
 )
 
 const cutoff = time.Second/20
+const dangerweight float64 = 15
 
 type StatusType int
 const (
@@ -104,6 +105,18 @@ func GetDirections() map[Coord]string {
   }
 }
 
+func RelativeDanger() [7][7]float64 {
+  return [7][7]float64{
+    { 0, 0,.1,.4,.1, 0, 0},
+    { 0,.1,.4,.8,.4,.1, 0},
+    {.1,.4,.8, 1,.8,.4,.1},
+    {.4,.8, 1, 1, 1,.8,.4},
+    {.1,.4,.8, 1,.8,.4,.1},
+    { 0,.1,.4,.8,.4,.1, 0},
+    { 0, 0,.1,.4,.1, 0, 0},
+  }
+}
+
 func MarkBoard(board BoardRep, xy Coord, what StatusType)BoardRep {
   board.Board[xy.X+board.Offset][xy.Y+board.Offset].StatusName=what
   return board
@@ -136,21 +149,12 @@ func CreateRepresentation(b Board, me Battlesnake) BoardRep {
       BRep.Snakes = append(BRep.Snakes, nav)
     }
     if ((snake.Length>=me.Length) && (snake.ID != me.ID)){
-      dirmap := GetDirections()
-      toAdd:= map[bool]float64{true:3, false:1.5}
-      for directions, _ := range dirmap {
-        dangerCoord := AddCoord(snake.Head, directions)
-        BRep.Board[dangerCoord.X+Offset][dangerCoord.Y+Offset].DangerLvl += 4*toAdd[true]
-        for directions2, _ := range dirmap {
-          dangerCoord2 := AddCoord(dangerCoord, directions2)
-          if IsCoordOnBoard(dangerCoord2, BRep) {
-            BRep.Board[dangerCoord2.X+Offset][dangerCoord2.Y+Offset].DangerLvl += 2*toAdd[directions==snakedir||directions2==snakedir]
-          }
-          for directions3, _ := range dirmap {
-            dangerCoord3 := AddCoord(dangerCoord2, directions3)
-            if IsCoordOnBoard(dangerCoord3, BRep) {
-              BRep.Board[dangerCoord3.X+Offset][dangerCoord3.Y+Offset].DangerLvl  += toAdd[directions3==snakedir]
-            }
+      for x, colarray := range RelativeDanger(){
+        for y, danger := range colarray {
+          dangerCoord := AddCoord(snake.Head, Coord{x,y})
+          dangerCoord = SubtrCoord(dangerCoord, Coord{3,3})
+          if IsCoordOnBoard(dangerCoord, BRep) {
+            BRep.Board[dangerCoord.X+Offset][dangerCoord.Y+Offset].DangerLvl += danger*dangerweight
           }
         }
       }
@@ -167,17 +171,17 @@ func CreateRepresentation(b Board, me Battlesnake) BoardRep {
 
 func DetermineValue(xy Coord, board BoardRep, i int) float64 {
   var status = GetValue(board, xy)
-  spotpoints := float64(100)
+  spotpoints := float64(200)
   if board.MyLength>9{
     spotpoints-= math.Abs(float64(xy.X-(board.Width /2)))/float64(board.Width ) *3 -
                 math.Abs(float64(xy.Y-(board.Height/2)))/float64(board.Height) *3
     if ((xy.X==0)||(xy.Y==0)||(board.Width-xy.X==1)||(board.Height-xy.Y==1)){
-      spotpoints = 75
+      spotpoints = 175
     }
   }
-  contested := status.DangerLvl>=30 && i==0
+  contested := (status.DangerLvl>(dangerweight-.5)) && i==0
   if (contested||status.LikelySnake) {
-    spotpoints-=50
+    spotpoints-=100
   } else {
     spotpoints-=status.DangerLvl
   }
@@ -249,15 +253,18 @@ func MoveSnake(xy Coord, boardrep BoardRep, points float64, i int, MaxDepth int,
 }
 
 func Decide(r GameRequest) string {
-  fmt.Printf("Current Location: %s\n",r.You.Head)
+  t0 := time.Now()
+  fmt.Printf("\n###################Current Location: %s\n",r.You.Head)
   representation := CreateRepresentation(r.Board, r.You)
   Depth := GetDepth(representation.OpenSlots)
-  fmt.Printf("\n###################Depth: %s; Openslots: %s \n", Depth, representation.OpenSlots)
+  fmt.Printf("Setup time: %s \n", time.Since(t0))
+  fmt.Printf("Depth: %s; Openslots: %s \n", Depth, representation.OpenSlots)
   for rowi, row := range representation.Board{
     fmt.Printf("\n Row number: %s\n %s \n", rowi, row)
   }
   points, i, move, scorelist := MoveSnake(r.You.Head, representation, 0, 0, Depth, time.Now())
   fmt.Printf("Scorelist:\n %s \n", scorelist)
   fmt.Printf("Choosing '%s' with Score: %s and %s iterations\n", move, points, i)
+  fmt.Printf("Total time: %s \n", time.Since(t0))
   return move
 }
