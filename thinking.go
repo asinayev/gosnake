@@ -137,9 +137,10 @@ func CreateRepresentation(b Board, me Battlesnake) BoardRep {
     }
     if ((snake.Length>=me.Length) && (snake.ID != me.ID)){
       dirmap := GetDirections()
-      toAdd:= map[bool]float64{true:1.34, false:.67}
+      toAdd:= map[bool]float64{true:3, false:1.5}
       for directions, _ := range dirmap {
         dangerCoord := AddCoord(snake.Head, directions)
+        BRep.Board[dangerCoord.X+Offset][dangerCoord.Y+Offset].DangerLvl += 4*toAdd[true]
         for directions2, _ := range dirmap {
           dangerCoord2 := AddCoord(dangerCoord, directions2)
           if IsCoordOnBoard(dangerCoord2, BRep) {
