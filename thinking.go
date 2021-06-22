@@ -175,7 +175,7 @@ func DetermineValue(xy Coord, board BoardRep, i int) float64 {
       spotpoints = 75
     }
   }
-  contested := status.DangerLvl>=10 && i==0
+  contested := status.DangerLvl>=30 && i==0
   if (contested||status.LikelySnake) {
     spotpoints-=50
   } else {
