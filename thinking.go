@@ -7,7 +7,7 @@ import (
 )
 
 const cutoff = time.Second/20
-const dangerweight float64 = 25
+const dangerweight float64 = 20
 
 type StatusType int
 const (
@@ -37,7 +37,7 @@ type BoardRep struct {
 	Width     int
   Offset    int
   OpenSlots int
-  MyLength  int32
+  Me        Battlesnake
   Snakes    []snakenav
 }
 
@@ -88,7 +88,7 @@ func GetDepth(slots int) int {
   } else if (slots>100){
     return 6
   } else if (slots>80){
-    return 7
+    return 8
   } else if (slots>60){
     return 8
   } else {
@@ -129,7 +129,7 @@ func GetValue(board BoardRep, xy Coord) status {
 func CreateRepresentation(b Board, me Battlesnake) BoardRep {
   Offset:=1
   BRep := MakeEmptyBoardRep(b, Offset)
-  BRep.MyLength=me.Length
+  BRep.Me=me
   for x := 0; x < b.Width; x++ {
     for y := 0; y < b.Height; y++ {
       BRep=MarkBoard(BRep, Coord{x,y}, Inside)
@@ -154,15 +154,24 @@ func CreateRepresentation(b Board, me Battlesnake) BoardRep {
           dangerCoord := AddCoord(snake.Head, Coord{x,y})
           dangerCoord = SubtrCoord(dangerCoord, Coord{3,3})
           if IsCoordOnBoard(dangerCoord, BRep) {
-            BRep.Board[dangerCoord.X+Offset][dangerCoord.Y+Offset].DangerLvl += danger*dangerweight
+            if(snake.Length>me.Length || danger ==1){ // for equal size snakes, only penalize the adjacent cell
+              BRep.Board[dangerCoord.X+Offset][dangerCoord.Y+Offset].DangerLvl += danger*dangerweight
+          }
           }
         }
       }
     }
+    lastxy := Coord{-1,-1}
     for snakei, xy := range snake.Body {
-      BRep.OpenSlots-=1
-      BRep=MarkBoard(BRep, xy, Snake)
-      BRep.Board[xy.X+Offset][xy.Y+Offset].SnakeOrder=int(snake.Length)-snakei
+      if xy == lastxy {
+        // if the last piece of the snake is in the same place as the current one, it'll take one more step to clear the snake
+        BRep.Board[xy.X+Offset][xy.Y+Offset].SnakeOrder+=1
+      } else {
+        BRep.OpenSlots-=1
+        BRep=MarkBoard(BRep, xy, Snake)
+        BRep.Board[xy.X+Offset][xy.Y+Offset].SnakeOrder=int(snake.Length)-snakei
+      }
+      lastxy = xy
     }
 
   }
@@ -174,24 +183,24 @@ func DetermineValue(xy Coord, board BoardRep, i int) float64 {
   spotpoints := float64(200)
   spotpoints-= math.Abs(float64(xy.X-(board.Width /2)))/float64(board.Width ) *6 
   spotpoints-=math.Abs(float64(xy.Y-(board.Height/2)))/float64(board.Height) *6
-  if board.MyLength>9{
+  if board.Me.Length>9{
     if ((xy.X==0)||(xy.Y==0)||(board.Width-xy.X==1)||(board.Height-xy.Y==1)){
-      spotpoints = 150
+      spotpoints = 160
     }
   }
   contested := (status.DangerLvl>(dangerweight-.5)) && i==0
-  if (contested||status.LikelySnake) {
+  if (contested) {
     spotpoints-=100
+  } else if (status.LikelySnake) {
+    spotpoints -= math.Max(0, 55-float64(i)*10)
   } else {
     spotpoints-=status.DangerLvl
   }
-  if (status.HasHazard) {
+  if (status.HasHazard && status.StatusName!=Food) {
     spotpoints-=20
   }
   if (status.StatusName==Snake) {
-    if (i-status.SnakeOrder==-1){
-      spotpoints-=20
-    } else if (i-status.SnakeOrder< -1){
+    if (i-status.SnakeOrder< -1){
       spotpoints=0
     } else {
       spotpoints-=10
@@ -200,7 +209,7 @@ func DetermineValue(xy Coord, board BoardRep, i int) float64 {
     if (contested){
       spotpoints-=10
     } else {
-      spotpoints+=30
+      spotpoints+=math.Max(30, 60-float64(board.Me.Health))
     }    
   } else if (status.StatusName==Outside) {
     spotpoints=0
@@ -214,7 +223,7 @@ func ScoreLocation(xy Coord, boardrep BoardRep, points float64, i int, MaxDepth 
     points += (headscore * math.Exp(-0.25 * float64(i)) )
     i++
     boardrep=MarkBoard(boardrep, xy, Snake)
-    boardrep.Board[xy.X+boardrep.Offset][xy.Y+boardrep.Offset].SnakeOrder=int(boardrep.MyLength)+i
+    boardrep.Board[xy.X+boardrep.Offset][xy.Y+boardrep.Offset].SnakeOrder=int(boardrep.Me.Length)+i
     for snakei, snake := range boardrep.Snakes{
       newhead:=AddCoord(snake.Head, snake.Dir)
       if GetValue(boardrep, newhead).StatusName!=Outside{
