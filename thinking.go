@@ -200,11 +200,9 @@ func DetermineValue(xy Coord, board BoardRep, i int) float64 {
     spotpoints-=20
   }
   if (status.StatusName==Snake) {
-    if i<(status.SnakeOrder-1) {
+    if i<status.SnakeOrder {
       spotpoints=0
-    } else {
-      spotpoints-=10
-    }
+    } 
   } else if (status.StatusName==Food) {
     if (contested){
       spotpoints-=10
