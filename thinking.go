@@ -6,8 +6,8 @@ import (
   "time"
 )
 
-const cutoff = time.Second/20
-const dangerweight float64 = 20
+const cutoff = time.Second/25
+const dangerweight float64 = 15
 
 type StatusType int
 const (
@@ -84,15 +84,15 @@ func IsCoordOnBoard(xy Coord, board BoardRep) bool {
 
 func GetDepth(slots int) int {
   if (slots>105){
+    return 4
+  } else if (slots>95){
     return 5
-  } else if (slots>100){
-    return 6
   } else if (slots>80){
-    return 8
+    return 6
   } else if (slots>60){
-    return 8
+    return 7
   } else {
-    return 10
+    return 8
   }
 }
 
@@ -200,7 +200,7 @@ func DetermineValue(xy Coord, board BoardRep, i int) float64 {
     spotpoints-=20
   }
   if (status.StatusName==Snake) {
-    if (i-status.SnakeOrder< -1){
+    if i<(status.SnakeOrder-1) {
       spotpoints=0
     } else {
       spotpoints-=10
@@ -220,7 +220,7 @@ func DetermineValue(xy Coord, board BoardRep, i int) float64 {
 func ScoreLocation(xy Coord, boardrep BoardRep, points float64, i int, MaxDepth int, t0 time.Time)(float64, int){
   headscore := DetermineValue(xy, boardrep, i) 
   if ((headscore>0.1)&&(i<MaxDepth)){
-    points += (headscore * math.Exp(-0.25 * float64(i)) )
+    points += (headscore * math.Exp(-0.125 * float64(i)) )
     i++
     boardrep=MarkBoard(boardrep, xy, Snake)
     boardrep.Board[xy.X+boardrep.Offset][xy.Y+boardrep.Offset].SnakeOrder=int(boardrep.Me.Length)+i
